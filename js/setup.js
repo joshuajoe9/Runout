@@ -89,10 +89,22 @@ function pick(c) {
   render();
 }
 
+// deal hand g two random cards that aren't already on the table; it stays put until rolled again
+function randomHand(g) {
+  state[g] = [null, null];
+  var free = [];
+  for (var c = 0; c < 52; c++) if (!findCard(c)) free.push(c);
+  for (var i = 0; i < 2; i++) state[g][i] = free.splice(Math.floor(Math.random() * free.length), 1)[0];
+  if (state.active && state.active.g === g) state.active = null;
+}
+
+// a preset hand of "?" gets a random hand
 function applyPreset(a, b) {
-  state.A = [parse(a.slice(0, 2)), parse(a.slice(2))];
-  state.B = [parse(b.slice(0, 2)), parse(b.slice(2))];
   state.board = [null, null, null, null, null];
+  state.A = a === '?' ? [null, null] : [parse(a.slice(0, 2)), parse(a.slice(2))];
+  state.B = b === '?' ? [null, null] : [parse(b.slice(0, 2)), parse(b.slice(2))];
+  if (a === '?') randomHand('A');
+  if (b === '?') randomHand('B');
   state.active = null;
   render();
 }

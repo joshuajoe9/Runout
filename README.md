@@ -2,6 +2,8 @@
 
 Pick two poker hands (and an optional board), deal a handful of runouts street by street, and compare what actually happened to exact equity from enumerating every possible board.
 
+Each hand has a **Random** button that deals it two random cards. The hand stays the same for every runout until you roll it again.
+
 Open `index.html` in a browser. No build step, no dependencies.
 
 ## Layout

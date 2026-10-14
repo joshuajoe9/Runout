@@ -70,6 +70,9 @@ h3 span { font-family: var(--font-body); font-weight: 400; color: var(--ink-2); 
 .hand-head { display: flex; justify-content: space-between; align-items: center; }
 .who { font: 600 11px var(--font-body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--hc); }
 .notation { font: 600 28px/1 var(--font-mono); color: var(--hc); min-height: 28px; }
+.hand-tools { display: flex; align-items: center; gap: 10px; }
+.rand-btn { border: 1px solid var(--hc); background: transparent; color: var(--hc); border-radius: 999px; padding: 2px 10px; font: 600 12px var(--font-body); }
+.rand-btn:hover { background: var(--hc); color: var(--surface); }
 .link { background: none; border: 0; padding: 2px 0; color: var(--ink-2); font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
 
 .slots { display: flex; gap: 8px; }

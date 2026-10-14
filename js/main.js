@@ -9,6 +9,7 @@ $('setup').addEventListener('click', function (e) {
   if (!t) return;
   if (t.classList.contains('slot')) { state.active = { g: t.dataset.g, i: +t.dataset.i }; render(); }
   else if (t.dataset.c != null) pick(+t.dataset.c);
+  else if (t.dataset.rand) { randomHand(t.dataset.rand); render(); }
   else if (t.dataset.clear) {
     var g = t.dataset.clear;
     if (g === 'board') state.board = [null, null, null, null, null];
