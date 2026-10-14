@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Runout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..600&family=JetBrains+Mono:wght@400..600&display=swap">
+<style>
+/* Layout: setup (hands, board, card picker, run controls) on the left, results on the right; one column on phones.
+   Hand A is amber, Hand B is violet, everything else stays slate. Cards use a four-color deck. */
+:root {
+  --bg: #EDF0F5; --surface: #FFFFFF; --well: #E3E8F0; --ink: #131A26; --ink-2: #506074; --line: #D2D9E4; --dash: #9AA7BA;
+  --a: #A65A08; --a-bg: #FAEBD6; --on-a: #FFFFFF;
+  --b: #6A4BD1; --b-bg: #EAE5FA; --on-b: #FFFFFF;
+  --tie: #C9D0DC; --on-tie: #1B2434;
+  --face: #FFFFFF; --face-line: #C5CDDA;
+  --s-s: #1B2330; --s-h: #D32F2F; --s-d: #1D6BD8; --s-c: #1C8748;
+  --btn: #131A26; --on-btn: #F4F6FA;
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E131B; --surface: #161D28; --well: #1D2634; --ink: #E6EBF3; --ink-2: #97A4B8; --line: #2A3445; --dash: #4A586D;
+    --a: #F2A93B; --a-bg: #2A1F10; --on-a: #1D1203;
+    --b: #A68CFF; --b-bg: #221B45; --on-b: #140A36;
+    --tie: #394559; --on-tie: #D7DEEA;
+    --face: #E9EDF4; --face-line: #AEB8C9;
+    --s-s: #1B2330; --s-h: #C62828; --s-d: #1B64C8; --s-c: #17773F;
+    --btn: #E6EBF3; --on-btn: #0E131B;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E131B; --surface: #161D28; --well: #1D2634; --ink: #E6EBF3; --ink-2: #97A4B8; --line: #2A3445; --dash: #4A586D;
+  --a: #F2A93B; --a-bg: #2A1F10; --on-a: #1D1203;
+  --b: #A68CFF; --b-bg: #221B45; --on-b: #140A36;
+  --tie: #394559; --on-tie: #D7DEEA;
+  --face: #E9EDF4; --face-line: #AEB8C9;
+  --s-s: #1B2330; --s-h: #C62828; --s-d: #1B64C8; --s-c: #17773F;
+  --btn: #E6EBF3; --on-btn: #0E131B;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  padding-block: 28px 44px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.shell { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.top h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(38px, 7vw, 58px); line-height: 1; letter-spacing: -0.025em; margin: 0 0 10px; }
+.top p { margin: 0; color: var(--ink-2); max-width: 60ch; font-size: 16px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+h2, h3 { font-family: var(--font-display); margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+h2 { font-size: 21px; }
+h3 { font-size: 15px; }
+h3 span { font-family: var(--font-body); font-weight: 400; color: var(--ink-2); font-size: 13px; margin-left: 6px; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; }
+
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--well); border-radius: 999px; padding: 5px 11px; font: 500 13px var(--font-body); }
+.chip:hover { border-color: var(--dash); }
+
+.hands { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hand { --hc: var(--a); background: var(--a-bg); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.hand.b { --hc: var(--b); background: var(--b-bg); }
+.hand-head { display: flex; justify-content: space-between; align-items: center; }
+.who { font: 600 11px var(--font-body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--hc); }
+.notation { font: 600 28px/1 var(--font-mono); color: var(--hc); min-height: 28px; }
+.link { background: none; border: 0; padding: 2px 0; color: var(--ink-2); font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; }
+
+.slots { display: flex; gap: 8px; }
+.slot {
+  flex: 1 1 0; max-width: 66px; aspect-ratio: 5 / 7; border-radius: 8px;
+  border: 1.5px dashed var(--dash); background: transparent; color: var(--ink-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  line-height: 1; padding: 0; font-size: 20px; min-width: 0;
+}
+.slot.filled { border: 1px solid var(--face-line); background: var(--face); }
+.slot .rk { font: 700 24px/1 var(--font-display); }
+.slot .st { font-size: 20px; margin-top: 2px; }
+.slot.active { outline: 2.5px solid var(--hc, var(--ink)); outline-offset: 2px; }
+.sx-s { color: var(--s-s); } .sx-h { color: var(--s-h); } .sx-d { color: var(--s-d); } .sx-c { color: var(--s-c); }
+
+.board-slots { display: flex; gap: 8px; }
+.bslot { flex: 1 1 0; max-width: 62px; display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.bslot.gap { margin-left: 8px; }
+.bslot .slot { width: 100%; max-width: none; }
+.bslot .slot .rk { font-size: 20px; }
+.bslot .slot .st { font-size: 17px; }
+.bslot span { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.board-wrap { display: flex; flex-direction: column; gap: 10px; }
+
+.picker { background: var(--well); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.prow { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 3px; }
+.pc { height: 42px; border-radius: 5px; border: 1px solid var(--face-line); background: var(--face); padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; min-width: 0; transition: transform 0.1s; }
+.pc .rk { font: 700 13px var(--font-display); }
+.pc .st { font-size: 12px; }
+.pc:hover { transform: translateY(-1px); }
+.pc.used .rk, .pc.used .st { opacity: 0.5; }
+.pc.u-A { background: var(--a-bg); border-color: var(--a); }
+.pc.u-B { background: var(--b-bg); border-color: var(--b); }
+.pc.u-board { background: var(--well); border-color: var(--ink-2); }
+.hint { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+
+.runbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font: 600 11px var(--font-body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); }
+#runs { width: 140px; height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 500 16px var(--font-mono); padding: 0 10px; }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.quick button { height: 42px; border: 1px solid var(--line); background: var(--well); border-radius: 8px; padding: 0 11px; font: 500 13px var(--font-mono); }
+.quick button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.go { height: 42px; padding: 0 24px; border: 0; border-radius: 8px; background: var(--btn); color: var(--on-btn); font: 650 15px var(--font-display); margin-left: auto; }
+.go:disabled { opacity: 0.4; cursor: not-allowed; }
+#msg { flex-basis: 100%; min-height: 18px; font-size: 13px; color: var(--ink-2); margin: 0; }
+
+.matchup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pill { font: 600 14px var(--font-mono); padding: 3px 10px; border-radius: 999px; }
+.pill.a { background: var(--a-bg); color: var(--a); }
+.pill.b { background: var(--b-bg); color: var(--b); }
+.vs { color: var(--ink-2); font-size: 13px; }
+.boardtxt { margin-left: auto; font: 500 13px var(--font-mono); color: var(--ink-2); }
+
+.brow { display: flex; flex-direction: column; gap: 6px; }
+.brow-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
+.brow-head strong { color: var(--ink); font-weight: 600; }
+.bar { display: flex; height: 38px; border-radius: 8px; overflow: hidden; background: var(--well); }
+.seg { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; white-space: nowrap; font: 600 13px var(--font-mono); transition: width 0.35s ease; }
+.seg.a { background: var(--a); color: var(--on-a); }
+.seg.t { background: var(--tie); color: var(--on-tie); }
+.seg.b { background: var(--b); color: var(--on-b); }
+.prog { height: 38px; border-radius: 8px; background: var(--well); position: relative; overflow: hidden; display: flex; align-items: center; padding-inline: 12px; font: 500 13px var(--font-mono); color: var(--ink-2); }
+.prog i { position: absolute; inset: 0 auto 0 0; background: var(--line); width: 0; transition: width 0.2s; }
+.prog span { position: relative; }
+
+.tw { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { font: 600 11px var(--font-body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); text-align: right; padding: 0 0 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 0 9px 12px; text-align: right; font: 500 14px var(--font-mono); border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+td:first-child { font-family: var(--font-body); font-weight: 500; }
+tr.eq td { font-weight: 650; border-bottom: 0; }
+td small { display: block; font-size: 11.5px; color: var(--ink-2); font-weight: 400; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; }
+.dot.a { background: var(--a); } .dot.b { background: var(--b); } .dot.t { background: var(--tie); }
+
+.verdict { margin: 0; font-size: 14px; }
+.note { margin: 0; font-size: 13px; color: var(--ink-2); }
+.chart-block { display: flex; flex-direction: column; gap: 8px; }
+.legend { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--a); vertical-align: middle; margin-right: 6px; }
+.legend i.dash { border-top: 2px dashed var(--ink); }
+.legend i.bd { height: 10px; border: 0; background: var(--a-bg); outline: 1px solid var(--a); outline-offset: -1px; }
+#chart svg { display: block; width: 100%; height: auto; }
+#chart text { font: 11px var(--font-mono); fill: var(--ink-2); }
+#chart .ex-label { fill: var(--ink); }
+.g { stroke: var(--line); stroke-width: 1; fill: none; }
+.ln { fill: none; stroke: var(--a); stroke-width: 1.75; stroke-linejoin: round; }
+.exl { stroke: var(--ink); stroke-dasharray: 5 4; stroke-width: 1.25; fill: none; }
+.band { fill: var(--a); fill-opacity: 0.16; stroke: none; }
+.dotpt { fill: var(--a); stroke: var(--surface); stroke-width: 2; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="top">
+    <h1>Runout</h1>
+    <p>Pick two hands, run the board out as many times as you like, and see how close the simulation gets to the exact odds.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" id="setup" aria-label="Matchup setup">
+      <div class="sec-head">
+        <h2>Matchup</h2>
+        <div class="presets">
+          <button class="chip" data-a="AhAd" data-b="KsKc">AA vs KK</button>
+          <button class="chip" data-a="AsKs" data-b="QhQd">AKs vs QQ</button>
+          <button class="chip" data-a="AhKd" data-b="2c2s">AKo vs 22</button>
+          <button class="chip" data-a="AsQd" data-b="AhJc">AQo vs AJo</button>
+          <button class="chip" data-a="JhTh" data-b="AsAc">JTs vs AA</button>
+        </div>
+      </div>
+
+      <div class="hands">
+        <div class="hand a">
+          <div class="hand-head"><span class="who">Hand A</span><button class="link" data-clear="A">Clear</button></div>
+          <div class="notation" id="labA">—</div>
+          <div class="slots" id="slotsA"></div>
+        </div>
+        <div class="hand b">
+          <div class="hand-head"><span class="who">Hand B</span><button class="link" data-clear="B">Clear</button></div>
+          <div class="notation" id="labB">—</div>
+          <div class="slots" id="slotsB"></div>
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <div class="sec-head">
+          <h3>Board <span>optional</span></h3>
+          <button class="link" data-clear="board">Clear board</button>
+        </div>
+        <div class="board-slots" id="slotsBoard"></div>
+      </div>
+
+      <div class="board-wrap">
+        <div class="picker" id="picker" aria-label="Card picker"></div>
+        <p class="hint">Click a card to deal it into the highlighted slot. Click a dealt card to take it back. Four-color deck.</p>
+      </div>
+
+      <div class="runbar">
+        <div class="field">
+          <label for="runs">Runs</label>
+          <input id="runs" type="text" inputmode="numeric" autocomplete="off" value="100,000">
+        </div>
+        <div class="quick" id="quick">
+          <button data-runs="1000">1K</button>
+          <button data-runs="10000">10K</button>
+          <button data-runs="100000">100K</button>
+          <button data-runs="1000000">1M</button>
+        </div>
+        <button class="go" id="go">Run it out</button>
+        <p id="msg" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="card" id="results" aria-label="Results" aria-live="polite"></section>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ENGINE-START */
+  function engineFactory() {
+    var B5 = 371293; // 13^5
+    var rc = new Uint8Array(13), sc = new Uint8Array(4), sm = new Uint16Array(4);
+    var h7 = new Int8Array(7);
+
+    function straightHigh(mask) {
+      var ext = (mask << 1) | (mask >> 12);
+      for (var i = 9; i >= 0; i--) if (((ext >> i) & 31) === 31) return i + 3;
+      return -1;
+    }
+
+    // cards are 0..51: rank = c >> 2 (0 = deuce, 12 = ace), suit = c & 3
+    function eval7(h) {
+      rc.fill(0); sc.fill(0); sm.fill(0);
+      var mask = 0, i, r, s;
+      for (i = 0; i < 7; i++) {
+        var x = h[i]; r = x >> 2; s = x & 3;
+        rc[r]++; sc[s]++; sm[s] |= (1 << r); mask |= (1 << r);
+      }
+      for (s = 0; s < 4; s++) {
+        if (sc[s] >= 5) {
+          var fm = sm[s], sh = straightHigh(fm);
+          if (sh >= 0) return 8 * B5 + sh;
+          var fk = 0, fn = 0;
+          for (r = 12; r >= 0; r--) if ((fm >> r) & 1) { fk = fk * 13 + r; if (++fn === 5) break; }
+          return 5 * B5 + fk;
+        }
+      }
+      var q = -1, t1 = -1, t2 = -1, p1 = -1, p2 = -1;
+      for (r = 12; r >= 0; r--) {
+        var n = rc[r];
+        if (n === 4) q = r;
+        else if (n === 3) { if (t1 < 0) t1 = r; else t2 = r; }
+        else if (n === 2) { if (p1 < 0) p1 = r; else if (p2 < 0) p2 = r; }
+      }
+      if (q >= 0) {
+        for (r = 12; r >= 0; r--) if (rc[r] > 0 && r !== q) return 7 * B5 + q * 13 + r;
+      }
+      if (t1 >= 0 && (t2 >= 0 || p1 >= 0)) {
+        return 6 * B5 + t1 * 13 + (t2 > p1 ? t2 : p1);
+      }
+      var st = straightHigh(mask);
+      if (st >= 0) return 4 * B5 + st;
+      var k = 0, c = 0;
+      if (t1 >= 0) {
+        for (r = 12; r >= 0; r--) if (rc[r] > 0 && r !== t1) { k = k * 13 + r; if (++c === 2) break; }
+        return 3 * B5 + t1 * 169 + k;
+      }
+      if (p1 >= 0 && p2 >= 0) {
+        var kk = 0;
+        for (r = 12; r >= 0; r--) if (rc[r] > 0 && r !== p1 && r !== p2) { kk = r; break; }
+        return 2 * B5 + p1 * 169 + p2 * 13 + kk;
+      }
+      if (p1 >= 0) {
+        for (r = 12; r >= 0; r--) if (rc[r] > 0 && r !== p1) { k = k * 13 + r; if (++c === 3) break; }
+        return B5 + p1 * 2197 + k;
+      }
+      for (r = 12; r >= 0; r--) if (rc[r] > 0) { k = k * 13 + r; if (++c === 5) break; }
+      return k;
+    }
+
+    function setup(A, B, board) {
+      var used = new Uint8Array(52), i;
+      var all = A.concat(B, board);
+      for (i = 0; i < all.length; i++) used[all[i]] = 1;
+      var deck = [];
+      for (i = 0; i < 52; i++) if (!used[i]) deck.push(i);
+      var ca = new Int8Array(7), cb = new Int8Array(7);
+      ca[0] = A[0]; ca[1] = A[1]; cb[0] = B[0]; cb[1] = B[1];
+      for (i = 0; i < board.length; i++) { ca[2 + i] = board[i]; cb[2 + i] = board[i]; }
+      return { deck: deck, m: deck.length, need: 5 - board.length, pos: 2 + board.length, ca: ca, cb: cb };
+    }
+
+    function simulate(A, B, board, runs, seed, progress) {
+      var S = setup(A, B, board), deck = S.deck, m = S.m, need = S.need, pos = S.pos, ca = S.ca, cb = S.cb;
+      var t = seed >>> 0;
+      function rnd() {
+        t = (t + 0x6D2B79F5) >>> 0;
+        var x = t;
+        x = Math.imul(x ^ (x >>> 15), x | 1);
+        x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+        return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+      }
+      var cps = [];
+      if (runs >= 100) {
+        var x0 = runs >= 1000 ? 100 : 10, l0 = Math.log10(x0), l1 = Math.log10(runs), seen = {}, k;
+        for (k = 0; k <= 48; k++) {
+          var v = Math.round(Math.pow(10, l0 + (l1 - l0) * k / 48));
+          if (!seen[v]) { seen[v] = 1; cps.push(v); }
+        }
+        cps.sort(function (a, b) { return a - b; });
+      }
+      var ci = 0, points = [], wa = 0, wb = 0, ties = 0, n, i, j, tmp, card;
+      for (n = 1; n <= runs; n++) {
+        for (i = 0; i < need; i++) {
+          j = i + Math.floor(rnd() * (m - i));
+          tmp = deck[i]; deck[i] = deck[j]; deck[j] = tmp;
+          card = deck[i];
+          ca[pos + i] = card; cb[pos + i] = card;
+        }
+        var sa = eval7(ca), sb = eval7(cb);
+        if (sa > sb) wa++; else if (sb > sa) wb++; else ties++;
+        if (ci < cps.length && n === cps[ci]) { points.push([n, (wa + ties / 2) / n]); ci++; }
+        if ((n & 65535) === 0) progress(n / runs);
+      }
+      return { wa: wa, wb: wb, ties: ties, n: runs, points: points, eq: (wa + ties / 2) / runs };
+    }
+
+    function comb(n, k) {
+      var r = 1;
+      for (var i = 1; i <= k; i++) r = r * (n - k + i) / i;
+      return Math.round(r);
+    }
+
+    function enumerate(A, B, board, progress) {
+      var S = setup(A, B, board), deck = S.deck, m = S.m, need = S.need, pos = S.pos, ca = S.ca, cb = S.cb;
+      var total = comb(m, need), wa = 0, wb = 0, ties = 0, done = 0;
+      function rec(start, depth) {
+        if (depth === need) {
+          var sa = eval7(ca), sb = eval7(cb);
+          if (sa > sb) wa++; else if (sb > sa) wb++; else ties++;
+          done++;
+          if ((done & 131071) === 0) progress(done / total);
+          return;
+        }
+        var last = m - (need - depth);
+        for (var i = start; i <= last; i++) {
+          var c = deck[i];
+          ca[pos + depth] = c; cb[pos + depth] = c;
+          rec(i + 1, depth + 1);
+        }
+      }
+      rec(0, 0);
+      return { wa: wa, wb: wb, ties: ties, total: total };
+    }
+
+    return { eval7: eval7, simulate: simulate, enumerate: enumerate, comb: comb };
+  }
+
+  function workerHandler(E, m, post) {
+    var sim = E.simulate(m.A, m.B, m.board, m.runs, m.seed, function (f) { post({ type: 'simProgress', frac: f }); });
+    post({ type: 'sim', result: sim });
+    if (m.doExact) {
+      var ex = E.enumerate(m.A, m.B, m.board, function (f) { post({ type: 'exactProgress', frac: f }); });
+      post({ type: 'exact', result: ex });
+    }
+    post({ type: 'done' });
+  }
+  /* ENGINE-END */
+
+  var $ = function (id) { return document.getElementById(id); };
+  var RANKS = '23456789TJQKA', SUITS = ['s', 'h', 'd', 'c'];
+  var SYM = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  var SUIT_NAME = { s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' };
+  var RANK_NAME = ['Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King', 'Ace'];
+  var STREET = ['Flop', 'Flop', 'Flop', 'Turn', 'River'];
+  var SLOTS = [['A', 0], ['A', 1], ['B', 0], ['B', 1]];
+
+  var parse = function (s) { return RANKS.indexOf(s[0]) * 4 + SUITS.indexOf(s[1]); };
+  var cardName = function (c) { return RANK_NAME[c >> 2] + ' of ' + SUIT_NAME[SUITS[c & 3]]; };
+  var cardText = function (c) { var r = RANKS[c >> 2]; return (r === 'T' ? '10' : r) + SYM[SUITS[c & 3]]; };
+  var fmt = function (n) { return n.toLocaleString('en-US'); };
+  var pct = function (x) { return (x * 100).toFixed(2) + '%'; };
+  var pts = function (x) { var v = x * 100; return (v < 0 ? '−' : '+') + Math.abs(v).toFixed(2) + ' pts'; };
+
+  var state = {
+    A: [parse('As'), parse('Ks')],
+    B: [parse('Qh'), parse('Qd')],
+    board: [null, null, null, null, null],
+    active: null
+  };
+  var arr = function (g) { return g === 'board' ? state.board : state[g]; };
+
+  function findCard(c) {
+    var g, i, a;
+    for (g of ['A', 'B', 'board']) { a = arr(g); for (i = 0; i < a.length; i++) if (a[i] === c) return { g: g, i: i }; }
+    return null;
+  }
+  function nextActive(g) {
+    var i;
+    if (g === 'board') { i = state.board.indexOf(null); return i < 0 ? null : { g: 'board', i: i }; }
+    for (var k = 0; k < SLOTS.length; k++) if (state[SLOTS[k][0]][SLOTS[k][1]] == null) return { g: SLOTS[k][0], i: SLOTS[k][1] };
+    return null;
+  }
+  function handLabel(h) {
+    if (h[0] == null || h[1] == null) return '—';
+    var ra = h[0] >> 2, rb = h[1] >> 2;
+    var hi = Math.max(ra, rb), lo = Math.min(ra, rb);
+    if (ra === rb) return RANKS[hi] + RANKS[lo];
+    return RANKS[hi] + RANKS[lo] + ((h[0] & 3) === (h[1] & 3) ? 's' : 'o');
+  }
+  function boardCards() { return state.board.filter(function (x) { return x != null; }); }
+  function validate() {
+    if (state.A.indexOf(null) >= 0 || state.B.indexOf(null) >= 0) return 'Pick two cards for each hand.';
+    var n = boardCards().length;
+    if (n === 1 || n === 2) return 'The board needs 3, 4 or 5 cards, or none for a preflop matchup.';
+    return '';
+  }
+
+  function faceHTML(c) {
+    var r = RANKS[c >> 2], s = SUITS[c & 3];
+    return '<span class="rk">' + (r === 'T' ? '10' : r) + '</span><span class="st">' + SYM[s] + '</span>';
+  }
+  function slotHTML(g, i) {
+    var c = arr(g)[i];
+    var act = state.active && state.active.g === g && state.active.i === i;
+    var where = g === 'board' ? 'Board ' + STREET[i].toLowerCase() : 'Hand ' + g + ' card ' + (i + 1);
+    var cls = 'slot' + (c != null ? ' filled sx-' + SUITS[c & 3] : '') + (act ? ' active' : '');
+    var btn = '<button class="' + cls + '" data-g="' + g + '" data-i="' + i + '" aria-label="' + where + ': ' + (c == null ? 'empty' : cardName(c)) + '">' +
+      (c == null ? '+' : faceHTML(c)) + '</button>';
+    if (g !== 'board') return btn;
+    return '<div class="bslot' + (i === 3 ? ' gap' : '') + '">' + btn + '<span>' + STREET[i] + '</span></div>';
+  }
+  function pickerHTML() {
+    var out = '';
+    SUITS.forEach(function (s, si) {
+      out += '<div class="prow">';
+      for (var r = 12; r >= 0; r--) {
+        var c = r * 4 + si, at = findCard(c);
+        out += '<button class="pc sx-' + s + (at ? ' used u-' + at.g : '') + '" data-c="' + c + '" aria-pressed="' + (at ? 'true' : 'false') + '" aria-label="' + cardName(c) + '">' + faceHTML(c) + '</button>';
+      }
+      out += '</div>';
+    });
+    return out;
+  }
+
+  var runsInput = $('runs');
+  function parseRuns() {
+    var n = parseInt(String(runsInput.value).replace(/[^\d]/g, ''), 10);
+    if (!isFinite(n) || n < 1) n = 100000;
+    return Math.min(n, 10000000);
+  }
+
+  function render() {
+    $('slotsA').innerHTML = slotHTML('A', 0) + slotHTML('A', 1);
+    $('slotsB').innerHTML = slotHTML('B', 0) + slotHTML('B', 1);
+    $('slotsBoard').innerHTML = [0, 1, 2, 3, 4].map(function (i) { return slotHTML('board', i); }).join('');
+    $('labA').textContent = handLabel(state.A);
+    $('labB').textContent = handLabel(state.B);
+    $('picker').innerHTML = pickerHTML();
+    var err = validate();
+    $('msg').textContent = err;
+    $('go').disabled = !!err;
+    var cur = parseRuns();
+    Array.prototype.forEach.call($('quick').children, function (b) {
+      b.setAttribute('aria-pressed', String(+b.dataset.runs === cur));
+    });
+  }
+
+  function pick(c) {
+    var at = findCard(c);
+    if (at) { arr(at.g)[at.i] = null; state.active = { g: at.g, i: at.i }; render(); return; }
+    var t = state.active || nextActive('A') || nextActive('board');
+    if (!t) return;
+    arr(t.g)[t.i] = c;
+    state.active = nextActive(t.g);
+    render();
+  }
+
+  function applyPreset(a, b) {
+    state.A = [parse(a.slice(0, 2)), parse(a.slice(2))];
+    state.B = [parse(b.slice(0, 2)), parse(b.slice(2))];
+    state.board = [null, null, null, null, null];
+    state.active = null;
+    render();
+    start();
+  }
+
+  /* ---------- running ---------- */
+  var worker = null, runId = 0, res = null, fallbackEngine = null;
+  var exactCache = {};
+
+  function start() {
+    if (validate()) return;
+    var runs = parseRuns();
+    runsInput.value = fmt(runs);
+    var A = state.A.slice(), B = state.B.slice(), board = boardCards();
+    var key = A.slice().sort().join(',') + '|' + B.slice().sort().join(',') + '|' + board.slice().sort().join(',');
+    var cached = exactCache[key] || null;
+    var E = fallbackEngine || (fallbackEngine = engineFactory());
+    var need = 5 - board.length;
+    runId++;
+    var id = runId;
+    if (worker) { worker.terminate(); worker = null; }
+    res = {
+      key: key, runs: runs, labA: handLabel(A), labB: handLabel(B),
+      boardText: board.length ? board.map(cardText).join(' ') : 'Preflop',
+      totalBoards: E.comb(48 - board.length, need), need: need,
+      sim: null, exact: cached, simProg: 0, exactProg: 0
+    };
+    render();
+    renderResults();
+    var msg = { A: A, B: B, board: board, runs: runs, doExact: !cached, seed: crypto.getRandomValues(new Uint32Array(1))[0] };
+    var onMsg = function (d) { handle(id, d); };
+    try {
+      var src = 'var E=(' + engineFactory + ')();var H=' + workerHandler + ';onmessage=function(e){H(E,e.data,function(d){postMessage(d);});};';
+      var url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+      worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      worker.onmessage = function (e) { onMsg(e.data); };
+      worker.onerror = function () { runOnMainThread(id, msg, E); };
+      worker.postMessage(msg);
+    } catch (err) {
+      runOnMainThread(id, msg, E);
+    }
+  }
+  function runOnMainThread(id, msg, E) {
+    if (id !== runId) return;
+    if (worker) { worker.terminate(); worker = null; }
+    setTimeout(function () { workerHandler(E, msg, function (d) { handle(id, d); }); }, 30);
+  }
+  function handle(id, d) {
+    if (id !== runId || !res) return;
+    if (d.type === 'simProgress') res.simProg = d.frac;
+    else if (d.type === 'sim') { res.sim = d.result; res.simProg = 1; }
+    else if (d.type === 'exactProgress') res.exactProg = d.frac;
+    else if (d.type === 'exact') { res.exact = d.result; res.exactProg = 1; exactCache[res.key] = d.result; }
+    renderResults();
+  }
+
+  /* ---------- results ---------- */
+  function barHTML(wa, t, wb, total, label) {
+    var seg = function (cls, n) {
+      var f = n / total;
+      return '<div class="seg ' + cls + '" style="width:' + (f * 100).toFixed(3) + '%">' + (f >= 0.09 ? (f * 100).toFixed(1) + '%' : '') + '</div>';
+    };
+    return '<div class="bar" role="img" aria-label="' + label + '">' + seg('a', wa) + seg('t', t) + seg('b', wb) + '</div>';
+  }
+  function progHTML(frac, text) {
+    return '<div class="prog"><i style="width:' + Math.round(frac * 100) + '%"></i><span>' + text + ' ' + Math.round(frac * 100) + '%</span></div>';
+  }
+
+  function renderResults() {
+    var r = res, el = $('results');
+    if (!r) return;
+    var s = r.sim, x = r.exact;
+    var simEq = s ? s.eq : null;
+    var exEq = x ? (x.wa + x.ties / 2) / x.total : null;
+    var html = '<div class="sec-head"><h2>Results</h2></div>';
+    html += '<div class="matchup"><span class="pill a">' + r.labA + '</span><span class="vs">vs</span><span class="pill b">' + r.labB + '</span><span class="boardtxt">' + r.boardText + '</span></div>';
+
+    html += '<div class="brow"><div class="brow-head"><span>Simulated</span><strong>' + fmt(r.runs) + ' runs</strong></div>';
+    html += s ? barHTML(s.wa, s.ties, s.wb, s.n, 'Simulated result') : progHTML(r.simProg, 'Running');
+    html += '</div>';
+    html += '<div class="brow"><div class="brow-head"><span>Exact equity</span><strong>' + fmt(r.totalBoards) + (r.totalBoards === 1 ? ' board' : ' boards') + '</strong></div>';
+    html += x ? barHTML(x.wa, x.ties, x.wb, x.total, 'Exact result') : progHTML(r.exactProg, 'Counting every board');
+    html += '</div>';
+
+    var cell = function (v) { return v == null ? '<span style="color:var(--ink-2)">—</span>' : pct(v); };
+    var rowsDef = [['a', r.labA + ' wins', 'wa'], ['t', 'Tie', 'ties'], ['b', r.labB + ' wins', 'wb']];
+    html += '<div class="tw"><table><thead><tr><th></th><th>Simulated</th><th>Exact</th><th>Gap</th></tr></thead><tbody>';
+    rowsDef.forEach(function (d) {
+      var sv = s ? s[d[2]] / s.n : null, ev = x ? x[d[2]] / x.total : null;
+      html += '<tr><td><i class="dot ' + d[0] + '"></i>' + d[1] + '</td><td>' + cell(sv) + '</td><td>' + cell(ev) + '</td><td>' + (sv != null && ev != null ? pts(sv - ev) : cell(null)) + '</td></tr>';
+    });
+    var margin = (exEq != null || simEq != null) && s ? 1.96 * Math.sqrt(((exEq != null ? exEq : simEq) * (1 - (exEq != null ? exEq : simEq))) / s.n) : null;
+    html += '<tr class="eq"><td><i class="dot a"></i>' + r.labA + ' equity<small>win + half of ties</small></td><td>' + cell(simEq) +
+      (margin != null && r.need > 0 ? '<small>±' + (margin * 100).toFixed(2) + ' pts, 95%</small>' : '') + '</td><td>' + cell(exEq) + '</td><td>' +
+      (simEq != null && exEq != null ? pts(simEq - exEq) : cell(null)) + '</td></tr>';
+    html += '</tbody></table></div>';
+
+    if (s && x) {
+      if (x.total === 1) {
+        html += '<p class="verdict">The board is complete, so there is only one outcome and every run gives the same result.</p>';
+      } else {
+        var gap = Math.abs(simEq - exEq);
+        html += '<p class="verdict">The simulation finished ' + (gap * 100).toFixed(2) + ' points from exact equity, ' +
+          (gap <= margin ? 'inside' : 'just outside') + ' its ±' + (margin * 100).toFixed(2) + ' point margin' +
+          (gap <= margin ? '.' : ', which happens about 1 time in 20.') + '</p>';
+      }
+    }
+
+    if (s && s.points.length > 1 && !(x && x.total === 1)) {
+      html += '<div class="chart-block"><h3>' + r.labA + ' equity as the runs add up</h3><div id="chart"></div>' +
+        '<div class="legend"><span><i></i>Simulated</span>' + (x ? '<span><i class="dash"></i>Exact</span><span><i class="bd"></i>95% expected range</span>' : '') + '</div></div>';
+    }
+    html += '<p class="note">Exact equity checks every possible board, so it is the true benchmark for this matchup. GTO describes how to play hands, not who wins a showdown, so exact equity is the number to compare against.</p>';
+    el.innerHTML = html;
+    drawChart();
+  }
+
+  var lastChartW = 0;
+  function shortNum(n) {
+    if (n >= 1e6) return (n / 1e6) + 'M';
+    if (n >= 1e3) return (n / 1e3) + 'K';
+    return String(n);
+  }
+  function drawChart() {
+    var el = $('chart');
+    if (!el || !res || !res.sim || res.sim.points.length < 2) return;
+    var W = Math.max(280, Math.round(el.clientWidth || 520)), H = W < 480 ? 220 : 250;
+    lastChartW = W;
+    var L = 46, R = 14, T = 12, Bm = 32;
+    var p = res.sim.points, x0 = p[0][0], x1 = res.runs;
+    var ex = res.exact ? (res.exact.wa + res.exact.ties / 2) / res.exact.total : null;
+    var c = ex != null ? ex : res.sim.eq;
+    var dev = 0, i;
+    for (i = 0; i < p.length; i++) dev = Math.max(dev, Math.abs(p[i][1] - c));
+    dev = Math.max(dev * 1.15, 0.02);
+    var lo = Math.max(0, c - dev), hi = Math.min(1, c + dev);
+    var lg = Math.log10;
+    var lx = function (n) { return L + (lg(n) - lg(x0)) / (lg(x1) - lg(x0)) * (W - L - R); };
+    var ly = function (v) { return T + (hi - v) / (hi - lo) * (H - T - Bm); };
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Simulated equity converging on the exact value as runs increase">';
+    for (i = 0; i <= 4; i++) {
+      var v = lo + (hi - lo) * i / 4, y = ly(v).toFixed(1);
+      svg += '<line class="g" x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '"/>';
+      svg += '<text x="' + (L - 6) + '" y="' + (+y + 4) + '" text-anchor="end">' + (v * 100).toFixed(1) + '%</text>';
+    }
+    for (var e = Math.ceil(lg(x0)); Math.pow(10, e) <= x1; e++) {
+      var n = Math.pow(10, e), xx = lx(n).toFixed(1);
+      svg += '<line class="g" x1="' + xx + '" x2="' + xx + '" y1="' + T + '" y2="' + (H - Bm) + '"/>';
+      svg += '<text x="' + xx + '" y="' + (H - Bm + 15) + '" text-anchor="middle">' + shortNum(n) + '</text>';
+    }
+    svg += '<text x="' + (L + (W - L - R) / 2) + '" y="' + (H - 3) + '" text-anchor="middle">runs (log scale)</text>';
+    if (ex != null) {
+      var up = [], dn = [], k, S = 60;
+      for (k = 0; k <= S; k++) {
+        var nn = Math.pow(10, lg(x0) + (lg(x1) - lg(x0)) * k / S);
+        var h = 1.96 * Math.sqrt(c * (1 - c) / nn);
+        up.push(lx(nn).toFixed(1) + ',' + ly(Math.min(hi, c + h)).toFixed(1));
+        dn.push(lx(nn).toFixed(1) + ',' + ly(Math.max(lo, c - h)).toFixed(1));
+      }
+      svg += '<polygon class="band" points="' + up.join(' ') + ' ' + dn.reverse().join(' ') + '"/>';
+      var ey = ly(ex).toFixed(1);
+      svg += '<line class="exl" x1="' + L + '" x2="' + (W - R) + '" y1="' + ey + '" y2="' + ey + '"/>';
+      svg += '<text class="ex-label" x="' + (W - R) + '" y="' + (ey - 6) + '" text-anchor="end">exact ' + pct(ex) + '</text>';
+    }
+    svg += '<polyline class="ln" points="' + p.map(function (q) { return lx(q[0]).toFixed(1) + ',' + ly(q[1]).toFixed(1); }).join(' ') + '"/>';
+    var last = p[p.length - 1];
+    svg += '<circle class="dotpt" cx="' + lx(last[0]).toFixed(1) + '" cy="' + ly(last[1]).toFixed(1) + '" r="4.5"/>';
+    svg += '</svg>';
+    el.innerHTML = svg;
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () {
+      var el = $('chart');
+      if (el && Math.round(el.clientWidth) !== lastChartW) drawChart();
+    }).observe($('results'));
+  }
+
+  /* ---------- events ---------- */
+  $('setup').addEventListener('click', function (e) {
+    var t = e.target.closest('button');
+    if (!t) return;
+    if (t.classList.contains('slot')) { state.active = { g: t.dataset.g, i: +t.dataset.i }; render(); }
+    else if (t.dataset.c != null) pick(+t.dataset.c);
+    else if (t.dataset.clear) {
+      var g = t.dataset.clear;
+      if (g === 'board') state.board = [null, null, null, null, null];
+      else state[g] = [null, null];
+      state.active = { g: g, i: 0 };
+      render();
+    }
+    else if (t.dataset.a) applyPreset(t.dataset.a, t.dataset.b);
+    else if (t.dataset.runs) { runsInput.value = fmt(+t.dataset.runs); render(); start(); }
+    else if (t.id === 'go') start();
+  });
+  runsInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') start(); });
+  runsInput.addEventListener('input', function () { render(); });
+  runsInput.addEventListener('blur', function () { runsInput.value = fmt(parseRuns()); render(); });
+
+  render();
+  start();
+})();
+</script>
+
+</body>
+</html>
